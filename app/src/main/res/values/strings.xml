@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClockScreen</string>
+    <string name="start_screen_saver">Modo Relógio</string>
+    <string name="location_unavailable">Localização indisponível</string>
+    <string name="weather_load_error">Não foi possível carregar dados do clima</string>
+    <string name="alarm_permission_granted">Permissão de alarme concedida!</string>
+    <string name="alarm_permission_denied">Permissão de alarme negada. O widget pode não funcionar corretamente.</string>
+    <string name="weather_loading">Carregando…</string>
+    <string name="temperature_placeholder">--°C</string>
+    <string name="humidity_placeholder">--%</string>
+    <string name="wind_placeholder">-- km/h</string>
+    <string name="temp_range_placeholder">--° / --°</string>
+    <string name="humidity_label">💧 Umidade</string>
+    <string name="wind_label">💨 Vento</string>
+    <string name="temp_range_label">📊 Min/Max</string>
+    <string name="forecast_title">Previsão 7 dias</string>
+    <string name="fallback_city">São Paulo (padrão)</string>
+    <string name="location_permission_denied">Sem permissão de localização. Usando localização padrão.</string>
+</resources>
