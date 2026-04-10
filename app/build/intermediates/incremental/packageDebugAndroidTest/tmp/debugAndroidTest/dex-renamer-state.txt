@@ -1,4 +1,0 @@
-#Wed Apr 08 11:50:06 BRT 2026
-base.0=C\:\\Trabalhos\\clockscreen\\app\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\0\\classes.dex
-path.0=0/classes.dex
-renamed.0=classes.dex

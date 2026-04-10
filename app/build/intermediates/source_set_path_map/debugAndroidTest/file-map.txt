@@ -1,4 +1,0 @@
-br.com.clockscreen.test.app-androidTest-0 C:\Trabalhos\clockscreen\app\build\generated\res\resValues\androidTest\debug
-br.com.clockscreen.test.app-mergeDebugAndroidTestResources-1 C:\Trabalhos\clockscreen\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
-br.com.clockscreen.test.app-mergeDebugAndroidTestResources-2 C:\Trabalhos\clockscreen\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
-br.com.clockscreen.test.app-merged_res-3 C:\Trabalhos\clockscreen\app\build\intermediates\merged_res\debugAndroidTest

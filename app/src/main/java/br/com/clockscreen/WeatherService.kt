@@ -26,11 +26,16 @@ object WeatherService {
         val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
         val cacheTime = prefs.getLong("cache_time", 0)
         val currentTime = System.currentTimeMillis()
+        val cachedCity = prefs.getString("city_name", null)
 
-        if (currentTime - cacheTime < CACHE_DURATION_MS) {
+        // Se o cache tem cidade "fallback/padrão", força nova busca com localização real
+        val forceRefresh = cachedCity?.contains("fallback", ignoreCase = true) == true
+                || cachedCity?.contains("padrão", ignoreCase = true) == true
+                || cachedCity == null
+
+        if (currentTime - cacheTime < CACHE_DURATION_MS && !forceRefresh) {
             Log.d(TAG, "📦 Usando dados do cache")
             val cachedResponse = prefs.getString("api_response", null)
-            val cachedCity = prefs.getString("city_name", null)
             if (cachedResponse != null) {
                 return try {
                     parseApiResponse(JSONObject(cachedResponse), cachedCity)
@@ -39,6 +44,10 @@ object WeatherService {
                     null
                 }
             }
+        }
+
+        if (forceRefresh) {
+            Log.d(TAG, "🔄 Forçando atualização (cache inválido ou fallback)")
         }
 
         return try {
@@ -190,7 +199,9 @@ object WeatherService {
         return WeatherForecast(
             current = current,
             daily = dailyList
-        )
+        ).also {
+            Log.d(TAG, "✅ Forecast criado - cidade: ${current.cityName ?: "null"}")
+        }
     }
 
     private fun getLastKnownLocation(context: Context): Location? {
@@ -228,6 +239,7 @@ object WeatherService {
         lon: Double
     ): String? {
         return try {
+            Log.d(TAG, "🌐 Buscando cidade para lat=$lat, lon=$lon")
             val geocoder = Geocoder(context, Locale("pt", "BR"))
 
             @Suppress("DEPRECATION")
@@ -235,13 +247,22 @@ object WeatherService {
 
             if (!addresses.isNullOrEmpty()) {
                 val addr = addresses[0]
+                val locality = addr.locality
+                val subAdminArea = addr.subAdminArea
+                val adminArea = addr.adminArea
+                val fullAddress = addr.getAddressLine(0)
 
-                Log.d(TAG, "🏙️ Cidade: ${addr.locality}")
+                Log.d(TAG, "📋 Endereço completo: $fullAddress")
+                Log.d(TAG, "🏙️ Locality: $locality")
+                Log.d(TAG, "📍 SubAdminArea: $subAdminArea")
+                Log.d(TAG, "📮 AdminArea: $adminArea")
 
-                addr.locality
-                    ?: addr.subAdminArea
-                    ?: addr.adminArea
+                val cityName = locality ?: subAdminArea ?: adminArea
+                Log.d(TAG, "✅ Cidade definida: $cityName")
+
+                cityName
             } else {
+                Log.w(TAG, "⚠️ Geocoder não retornou endereços")
                 null
             }
         } catch (e: Exception) {
