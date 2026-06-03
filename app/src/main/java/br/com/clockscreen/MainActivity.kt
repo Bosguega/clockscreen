@@ -14,6 +14,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import br.com.clockscreen.databinding.ActivityMainBinding
 import br.com.clockscreen.databinding.ItemForecastBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -67,8 +70,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        lifecycleScope.launch {
+            viewModel.manualCityConfig.collect { config ->
+                if (config.isEnabled) {
+                    binding.btnScreenSaver.text = getString(R.string.manual_city_active, config.cityName ?: "")
+                } else {
+                    binding.btnScreenSaver.text = getString(R.string.start_screen_saver)
+                }
+            }
+        }
+
         binding.btnScreenSaver.setOnClickListener {
             startActivity(Intent(this, ScreenSaverActivity::class.java))
+        }
+
+        binding.tvCity.setOnClickListener {
+            showCityConfigDialog()
         }
     }
 
@@ -109,6 +126,51 @@ class MainActivity : AppCompatActivity() {
             itemBinding.tvForecastTemp.text = "${daily.tempMin.toInt()}° / ${daily.tempMax.toInt()}°"
             binding.forecastContainer.addView(itemBinding.root)
         }
+    }
+
+    private fun showCityConfigDialog() {
+        val config = viewModel.manualCityConfig.value
+        val inflater = LayoutInflater.from(this)
+        val dialogView = inflater.inflate(R.layout.dialog_city_config, null)
+        val etCityName = dialogView.findViewById<TextInputEditText>(R.id.et_city_name)
+        val etLatitude = dialogView.findViewById<TextInputEditText>(R.id.et_latitude)
+        val etLongitude = dialogView.findViewById<TextInputEditText>(R.id.et_longitude)
+
+        if (config.isEnabled) {
+            etCityName.setText(config.cityName)
+            etLatitude.setText(config.latitude?.toString())
+            etLongitude.setText(config.longitude?.toString())
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.city_config_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.city_config_save) { _, _ ->
+                val cityName = etCityName.text?.toString()?.trim()
+                val latText = etLatitude.text?.toString()?.trim()
+                val lonText = etLongitude.text?.toString()?.trim()
+
+                if (cityName.isNullOrBlank() || latText.isNullOrBlank() || lonText.isNullOrBlank()) {
+                    Toast.makeText(this, R.string.city_config_invalid, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val lat = latText.toDoubleOrNull()
+                val lon = lonText.toDoubleOrNull()
+                if (lat == null || lon == null) {
+                    Toast.makeText(this, R.string.city_config_invalid_coords, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                viewModel.setManualCity(cityName, lat, lon, enabled = true)
+                Toast.makeText(this, getString(R.string.city_config_saved, cityName), Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton(R.string.city_config_disable) { _, _ ->
+                viewModel.disableManualCity()
+                Toast.makeText(this, R.string.city_config_disabled, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun scheduleMidnightUpdateWithPermissionCheck() {

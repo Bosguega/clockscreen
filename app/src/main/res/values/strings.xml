@@ -17,4 +17,17 @@
     <string name="forecast_title">Previsão 7 dias</string>
     <string name="fallback_city">São Paulo (padrão)</string>
     <string name="location_permission_denied">Sem permissão de localização. Usando localização padrão.</string>
-</resources>
+
+    <!-- Configuração manual de cidade -->
+    <string name="city_config_title">Configurar cidade manual</string>
+    <string name="city_config_hint">Toque no nome da cidade para configurar. Você pode definir uma cidade fixa para quando o GPS não estiver disponível.</string>
+    <string name="city_config_city_hint">Nome da cidade</string>
+    <string name="city_config_lat_hint">Latitude</string>
+    <string name="city_config_lon_hint">Longitude</string>
+    <string name="city_config_save">Salvar cidade</string>
+    <string name="city_config_disable">Usar GPS</string>
+    <string name="city_config_invalid">Preencha todos os campos</string>
+    <string name="city_config_invalid_coords">Coordenadas inválidas</string>
+    <string name="city_config_saved">Cidade definida: %s</string>
+    <string name="city_config_disabled">Usando localização GPS</string>
+    <string name="manual_city_active">📍 %s (toque para configurar)</string>

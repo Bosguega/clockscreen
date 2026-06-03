@@ -1,5 +1,6 @@
 package br.com.clockscreen
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -8,7 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import java.util.Calendar
+import kotlin.math.abs
 import kotlin.random.Random
 
 class SevenSegmentClock @JvmOverloads constructor(
@@ -39,7 +42,7 @@ class SevenSegmentClock @JvmOverloads constructor(
 
     // Glow mais suave
     private val paintGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#33FF0A00") // antes era #4DFF0A00, agora mais leve
+        color = Color.parseColor("#33FF0A00")
         style = Paint.Style.FILL
     }
 
@@ -51,14 +54,26 @@ class SevenSegmentClock @JvmOverloads constructor(
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
-        private const val BURN_IN_INTERVAL_MS = 10_000L // mais frequente
-        private const val MAX_OFFSET = 6f // maior deslocamento
+        private const val BURN_IN_INTERVAL_MS = 30_000L // a cada 30s (mais espaçado)
+        private const val MAX_OFFSET = 4f // menor deslocamento máximo
+        private const val ANIMATION_DURATION_MS = 800L // duração da animação suave
     }
 
-    // Offset por dígito
-    private var digitOffsets = mutableListOf<Pair<Float, Float>>()
+    // Target offsets (destino final da animação)
+    private var targetOffsets = mutableListOf<Pair<Float, Float>>()
+
+    // Current animated offsets (valores atuais sendo interpolados)
+    private var currentOffsets = mutableListOf<Pair<Float, Float>>()
+
+    // Animators para cada dígito
+    private val animators = mutableListOf<ValueAnimator>()
 
     init {
+        // Inicializa com zero offset
+        val totalDigits = 4 // HH:MM
+        targetOffsets = MutableList(totalDigits) { 0f to 0f }
+        currentOffsets = MutableList(totalDigits) { 0f to 0f }
+
         handler.post(object : Runnable {
             override fun run() {
                 invalidate()
@@ -66,19 +81,74 @@ class SevenSegmentClock @JvmOverloads constructor(
             }
         })
 
-        // Atualiza offset anti burn-in
+        // Atualiza offset anti burn-in com animação suave
         handler.postDelayed(object : Runnable {
             override fun run() {
-                val totalDigits = 4 // HH:MM
-                digitOffsets = MutableList(totalDigits) {
-                    val dx = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
-                    val dy = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
-                    dx to dy
-                }
-                invalidate()
+                applyAntiBurnInShift()
                 handler.postDelayed(this, BURN_IN_INTERVAL_MS)
             }
         }, BURN_IN_INTERVAL_MS)
+    }
+
+    /**
+     * Aplica deslocamento anti-burn-in com animação suave (interpolação linear).
+     * Em vez de pular instantaneamente para a nova posição, os dígitos
+     * deslizam suavemente durante ANIMATION_DURATION_MS.
+     */
+    private fun applyAntiBurnInShift() {
+        // Para animadores anteriores
+        animators.forEach { it.cancel() }
+        animators.clear()
+
+        val currentTargets = targetOffsets.toMutableList()
+        val startOffsets = currentOffsets.toMutableList()
+
+        // Gera novos offsets alvo
+        val newTargets = MutableList(targetOffsets.size) { index ->
+            val randomDx = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
+            val randomDy = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
+            randomDx to randomDy
+        }
+        targetOffsets = newTargets
+
+        // Cria um ValueAnimator que interpola de 0f a 1f
+        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = ANIMATION_DURATION_MS
+            interpolator = DecelerateInterpolator()
+
+            addUpdateListener { anim ->
+                val fraction = anim.animatedFraction
+                // Interpola cada dígito do offset inicial para o target
+                for (i in currentTargets.indices) {
+                    val startX = startOffsets[i].first
+                    val startY = startOffsets[i].second
+                    val targetX = newTargets[i].first
+                    val targetY = newTargets[i].second
+
+                    currentOffsets[i] = lerp(startX, targetX, fraction) to lerp(startY, targetY, fraction)
+                }
+                invalidate()
+            }
+
+            addOnCancelListener {
+                // Garante que ao cancelar os dígitos vão para o target final
+                for (i in currentTargets.indices) {
+                    currentOffsets[i] = newTargets[i]
+                }
+                invalidate()
+            }
+
+            start()
+        }
+
+        animators.add(animator)
+    }
+
+    /**
+     * Interpolação linear entre start e end com fator fraction (0..1)
+     */
+    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+        return start + (end - start) * fraction
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -107,7 +177,7 @@ class SevenSegmentClock @JvmOverloads constructor(
                 drawColon(canvas, xPos, startY, digitSize, second % 2 == 0)
                 xPos += digitSize * 0.4f
             } else {
-                val (dx, dy) = digitOffsets.getOrNull(offsetIndex) ?: 0f to 0f
+                val (dx, dy) = currentOffsets.getOrNull(offsetIndex) ?: 0f to 0f
                 canvas.save()
                 canvas.translate(dx, dy)
                 drawDigit(canvas, ch, xPos, startY, digitSize)
@@ -159,5 +229,7 @@ class SevenSegmentClock @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         handler.removeCallbacksAndMessages(null)
+        animators.forEach { it.cancel() }
+        animators.clear()
     }
 }

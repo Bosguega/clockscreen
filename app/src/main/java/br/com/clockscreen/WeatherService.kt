@@ -21,7 +21,6 @@ import kotlin.coroutines.resumeWithException
 object WeatherService {
 
     private const val TAG = "WeatherService"
-    private const val CACHE_DURATION_MS = 30 * 60 * 1000L // 30 min
     private const val HTTP_TIMEOUT_MS = 10_000 // 10s
 
     suspend fun getWeather(context: Context): WeatherData? {
@@ -29,21 +28,15 @@ object WeatherService {
     }
 
     suspend fun getForecast(context: Context): WeatherForecast? {
-        val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
-        val cacheTime = prefs.getLong("cache_time", 0)
-        val currentTime = System.currentTimeMillis()
-        val cachedCity = prefs.getString("city_name", null)
+        val cache = WeatherCache(context)
 
-        val forceRefresh = cachedCity?.contains("fallback", ignoreCase = true) == true
-                || cachedCity?.contains("padrão", ignoreCase = true) == true
-                || cachedCity == null
-
-        if (currentTime - cacheTime < CACHE_DURATION_MS && !forceRefresh) {
+        // Verifica cache válido
+        if (cache.isCacheValid()) {
             Log.d(TAG, "📦 Usando dados do cache")
-            val cachedResponse = prefs.getString("api_response", null)
-            if (cachedResponse != null) {
+            val cached = cache.getCachedWeather()
+            if (cached.apiResponse != null) {
                 return try {
-                    parseApiResponse(JSONObject(cachedResponse), cachedCity)
+                    parseApiResponse(JSONObject(cached.apiResponse), cached.cityName)
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Erro ao ler cache: ${e.message}", e)
                     null
@@ -51,32 +44,48 @@ object WeatherService {
             }
         }
 
-        if (forceRefresh) {
+        if (cache.isForceRefresh()) {
             Log.d(TAG, "🔄 Forçando atualização (cache inválido ou fallback)")
         }
 
         return try {
-            val location = getCurrentLocation(context)
-
-            if (location == null) {
-                Log.w(TAG, "⚠️ Sem localização, usando fallback")
+            // Verifica se cidade manual está configurada
+            val manualCity = cache.getManualCityConfig()
+            if (manualCity.isEnabled && manualCity.latitude != null && manualCity.longitude != null) {
+                Log.d(TAG, "📍 Usando cidade manual: ${manualCity.cityName}")
                 fetchWeather(
-                    lat = -23.55,
-                    lon = -46.63,
-                    cityName = context.getString(R.string.fallback_city),
-                    context = context
+                    lat = manualCity.latitude,
+                    lon = manualCity.longitude,
+                    cityName = manualCity.cityName,
+                    context = context,
+                    cache = cache
                 )
             } else {
-                Log.d(TAG, "📍 lat=${location.latitude}, lon=${location.longitude}")
+                // Tenta localização GPS
+                val location = getCurrentLocation(context)
 
-                val cityName = getCityName(context, location.latitude, location.longitude)
+                if (location == null) {
+                    Log.w(TAG, "⚠️ Sem localização, usando fallback")
+                    fetchWeather(
+                        lat = -23.55,
+                        lon = -46.63,
+                        cityName = context.getString(R.string.fallback_city),
+                        context = context,
+                        cache = cache
+                    )
+                } else {
+                    Log.d(TAG, "📍 lat=${location.latitude}, lon=${location.longitude}")
 
-                fetchWeather(
-                    lat = location.latitude,
-                    lon = location.longitude,
-                    cityName = cityName,
-                    context = context
-                )
+                    val cityName = getCityName(context, location.latitude, location.longitude)
+
+                    fetchWeather(
+                        lat = location.latitude,
+                        lon = location.longitude,
+                        cityName = cityName,
+                        context = context,
+                        cache = cache
+                    )
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro ao obter clima: ${e.message}", e)
@@ -84,11 +93,12 @@ object WeatherService {
         }
     }
 
-    private fun fetchWeather(
+    private suspend fun fetchWeather(
         lat: Double,
         lon: Double,
         cityName: String?,
-        context: Context
+        context: Context,
+        cache: WeatherCache
     ): WeatherForecast? {
         return try {
             val apiUrl = "https://api.open-meteo.com/v1/forecast?" +
@@ -116,13 +126,8 @@ object WeatherService {
 
             val forecast = parseApiResponse(JSONObject(response), cityName)
 
-            val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
-            prefs.edit().apply {
-                putString("api_response", response)
-                putString("city_name", cityName)
-                putLong("cache_time", System.currentTimeMillis())
-                apply()
-            }
+            // Salva no DataStore
+            cache.saveWeather(response, cityName)
 
             forecast
         } catch (e: Exception) {

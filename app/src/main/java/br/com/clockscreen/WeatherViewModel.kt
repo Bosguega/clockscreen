@@ -22,6 +22,20 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
     private val _error = MutableSharedFlow<Unit>(replay = 0)
     val error: SharedFlow<Unit> = _error
 
+    private val _manualCityConfig = MutableStateFlow(WeatherCache.ManualCityConfig())
+    val manualCityConfig: StateFlow<WeatherCache.ManualCityConfig> = _manualCityConfig
+
+    private val weatherCache = WeatherCache(getApplication())
+
+    init {
+        // Observa configuração de cidade manual
+        viewModelScope.launch {
+            weatherCache.observeManualCityConfig().collect { config ->
+                _manualCityConfig.value = config
+            }
+        }
+    }
+
     fun load() {
         if (_isLoading.value) return  // evita requisições concorrentes duplicadas
         viewModelScope.launch(Dispatchers.IO) {
@@ -30,6 +44,29 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
             _forecast.value = result
             if (result == null) _error.emit(Unit)
             _isLoading.value = false
+        }
+    }
+
+    fun setManualCity(cityName: String, latitude: Double, longitude: Double, enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            weatherCache.saveManualCityConfig(
+                WeatherCache.ManualCityConfig(
+                    cityName = cityName,
+                    latitude = latitude,
+                    longitude = longitude,
+                    isEnabled = enabled
+                )
+            )
+            // Recarrega com nova configuração
+            load()
+        }
+    }
+
+    fun disableManualCity() {
+        viewModelScope.launch(Dispatchers.IO) {
+            weatherCache.saveManualCityConfig(WeatherCache.ManualCityConfig())
+            // Recarrega com GPS
+            load()
         }
     }
 }
