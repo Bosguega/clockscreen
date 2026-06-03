@@ -3,6 +3,7 @@ package br.com.clockscreen
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -25,7 +26,7 @@ class WeatherCache(private val context: Context) {
         private val KEY_MANUAL_CITY = stringPreferencesKey("manual_city_name")
         private val KEY_MANUAL_CITY_LAT = stringPreferencesKey("manual_city_lat")
         private val KEY_MANUAL_CITY_LON = stringPreferencesKey("manual_city_lon")
-        private val KEY_USE_MANUAL_CITY = stringPreferencesKey("use_manual_city")
+        private val KEY_USE_MANUAL_CITY = booleanPreferencesKey("use_manual_city")
     }
 
     data class CachedWeather(
@@ -41,10 +42,10 @@ class WeatherCache(private val context: Context) {
         val isEnabled: Boolean = false
     )
 
-    private val prefs: Flow<Preferences> = context.weatherDataStore.data
+    private val prefsFlow: Flow<Preferences> = context.weatherDataStore.data
 
     suspend fun getCachedWeather(): CachedWeather {
-        val preferences = prefs.first()
+        val preferences = prefsFlow.first()
         return CachedWeather(
             apiResponse = preferences[KEY_API_RESPONSE],
             cityName = preferences[KEY_CITY_NAME],
@@ -53,7 +54,7 @@ class WeatherCache(private val context: Context) {
     }
 
     fun observeCachedWeather(): Flow<CachedWeather> {
-        return prefs.map { preferences ->
+        return prefsFlow.map { preferences ->
             CachedWeather(
                 apiResponse = preferences[KEY_API_RESPONSE],
                 cityName = preferences[KEY_CITY_NAME],
@@ -65,7 +66,11 @@ class WeatherCache(private val context: Context) {
     suspend fun saveWeather(apiResponse: String, cityName: String?) {
         context.weatherDataStore.edit { preferences ->
             preferences[KEY_API_RESPONSE] = apiResponse
-            preferences[KEY_CITY_NAME] = cityName
+            if (cityName != null) {
+                preferences[KEY_CITY_NAME] = cityName
+            } else {
+                preferences.remove(KEY_CITY_NAME)
+            }
             preferences[KEY_CACHE_TIME] = System.currentTimeMillis()
         }
     }
@@ -89,7 +94,7 @@ class WeatherCache(private val context: Context) {
     // Métodos para cidade manual
 
     suspend fun getManualCityConfig(): ManualCityConfig {
-        val preferences = prefs.first()
+        val preferences = prefsFlow.first()
         return ManualCityConfig(
             cityName = preferences[KEY_MANUAL_CITY],
             latitude = preferences[KEY_MANUAL_CITY_LAT]?.toDoubleOrNull(),
@@ -99,7 +104,7 @@ class WeatherCache(private val context: Context) {
     }
 
     fun observeManualCityConfig(): Flow<ManualCityConfig> {
-        return prefs.map { preferences ->
+        return prefsFlow.map { preferences ->
             ManualCityConfig(
                 cityName = preferences[KEY_MANUAL_CITY],
                 latitude = preferences[KEY_MANUAL_CITY_LAT]?.toDoubleOrNull(),
@@ -111,9 +116,21 @@ class WeatherCache(private val context: Context) {
 
     suspend fun saveManualCityConfig(config: ManualCityConfig) {
         context.weatherDataStore.edit { preferences ->
-            preferences[KEY_MANUAL_CITY] = config.cityName
-            preferences[KEY_MANUAL_CITY_LAT] = config.latitude?.toString()
-            preferences[KEY_MANUAL_CITY_LON] = config.longitude?.toString()
+            if (config.cityName != null) {
+                preferences[KEY_MANUAL_CITY] = config.cityName
+            } else {
+                preferences.remove(KEY_MANUAL_CITY)
+            }
+            if (config.latitude != null) {
+                preferences[KEY_MANUAL_CITY_LAT] = config.latitude.toString()
+            } else {
+                preferences.remove(KEY_MANUAL_CITY_LAT)
+            }
+            if (config.longitude != null) {
+                preferences[KEY_MANUAL_CITY_LON] = config.longitude.toString()
+            } else {
+                preferences.remove(KEY_MANUAL_CITY_LON)
+            }
             preferences[KEY_USE_MANUAL_CITY] = config.isEnabled
         }
     }

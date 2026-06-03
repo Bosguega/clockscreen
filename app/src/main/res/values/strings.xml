@@ -31,3 +31,4 @@
     <string name="city_config_saved">Cidade definida: %s</string>
     <string name="city_config_disabled">Usando localização GPS</string>
     <string name="manual_city_active">📍 %s (toque para configurar)</string>
+</resources>

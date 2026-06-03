@@ -1,5 +1,6 @@
 package br.com.clockscreen
 
+import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
@@ -11,7 +12,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import java.util.Calendar
-import kotlin.math.abs
 import kotlin.random.Random
 
 class SevenSegmentClock @JvmOverloads constructor(
@@ -104,7 +104,7 @@ class SevenSegmentClock @JvmOverloads constructor(
         val startOffsets = currentOffsets.toMutableList()
 
         // Gera novos offsets alvo
-        val newTargets = MutableList(targetOffsets.size) { index ->
+        val newTargets = MutableList(targetOffsets.size) {
             val randomDx = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
             val randomDy = Random.nextFloat() * MAX_OFFSET * 2 - MAX_OFFSET
             randomDx to randomDy
@@ -130,13 +130,18 @@ class SevenSegmentClock @JvmOverloads constructor(
                 invalidate()
             }
 
-            addOnCancelListener {
-                // Garante que ao cancelar os dígitos vão para o target final
-                for (i in currentTargets.indices) {
-                    currentOffsets[i] = newTargets[i]
+            addListener(object : Animator.AnimatorListener {
+                override fun onAnimationStart(anim: Animator) {}
+                override fun onAnimationEnd(anim: Animator) {}
+                override fun onAnimationRepeat(anim: Animator) {}
+                override fun onAnimationCancel(anim: Animator) {
+                    // Garante que ao cancelar os dígitos vão para o target final
+                    for (i in currentTargets.indices) {
+                        currentOffsets[i] = newTargets[i]
+                    }
+                    invalidate()
                 }
-                invalidate()
-            }
+            })
 
             start()
         }

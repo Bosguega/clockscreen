@@ -147,8 +147,12 @@ object WeatherService {
         val isDaytime = currentJson.optInt("is_day", 1) == 1
 
         val dailyJson = json.getJSONObject("daily")
-        val tempMax = dailyJson.getJSONArray("temperature_2m_max").getDouble(0).toFloat()
-        val tempMin = dailyJson.getJSONArray("temperature_2m_min").getDouble(0).toFloat()
+        val times = dailyJson.getJSONArray("time")
+        val weatherCodes = dailyJson.getJSONArray("weather_code")
+        val tempMaxArray = dailyJson.getJSONArray("temperature_2m_max")
+        val tempMinArray = dailyJson.getJSONArray("temperature_2m_min")
+        val tempMax = if (tempMaxArray.length() > 0) tempMaxArray.getDouble(0).toFloat() else temperature
+        val tempMin = if (tempMinArray.length() > 0) tempMinArray.getDouble(0).toFloat() else temperature
 
         val current = WeatherData(
             weatherCode = weatherCode,
@@ -160,11 +164,6 @@ object WeatherService {
             windSpeed = windSpeed,
             cityName = cityName
         )
-
-        val times = dailyJson.getJSONArray("time")
-        val weatherCodes = dailyJson.getJSONArray("weather_code")
-        val tempMaxArray = dailyJson.getJSONArray("temperature_2m_max")
-        val tempMinArray = dailyJson.getJSONArray("temperature_2m_min")
 
         val brLocale = Locale("pt", "BR")
         val weekdayFormat = SimpleDateFormat("EEE", brLocale)
