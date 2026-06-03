@@ -31,7 +31,7 @@ object DateAlarmScheduler {
 
         // Usa setExactAndAllowWhileIdle para precisão mesmo em Doze mode
         alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC,
+            AlarmManager.RTC_WAKEUP,
             calendar.timeInMillis,
             pendingIntent
         )

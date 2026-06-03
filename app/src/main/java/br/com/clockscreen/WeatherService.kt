@@ -1,16 +1,22 @@
 package br.com.clockscreen
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.location.Address
 import android.location.Geocoder
-import android.location.Location
-import android.location.LocationManager
+import android.os.Build
 import android.util.Log
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 object WeatherService {
 
@@ -18,17 +24,16 @@ object WeatherService {
     private const val CACHE_DURATION_MS = 30 * 60 * 1000L // 30 min
     private const val HTTP_TIMEOUT_MS = 10_000 // 10s
 
-    fun getWeather(context: Context): WeatherData? {
+    suspend fun getWeather(context: Context): WeatherData? {
         return getForecast(context)?.current
     }
 
-    fun getForecast(context: Context): WeatherForecast? {
+    suspend fun getForecast(context: Context): WeatherForecast? {
         val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
         val cacheTime = prefs.getLong("cache_time", 0)
         val currentTime = System.currentTimeMillis()
         val cachedCity = prefs.getString("city_name", null)
 
-        // Se o cache tem cidade "fallback/padrão", força nova busca com localização real
         val forceRefresh = cachedCity?.contains("fallback", ignoreCase = true) == true
                 || cachedCity?.contains("padrão", ignoreCase = true) == true
                 || cachedCity == null
@@ -51,7 +56,7 @@ object WeatherService {
         }
 
         return try {
-            val location = getLastKnownLocation(context)
+            val location = getCurrentLocation(context)
 
             if (location == null) {
                 Log.w(TAG, "⚠️ Sem localização, usando fallback")
@@ -62,16 +67,9 @@ object WeatherService {
                     context = context
                 )
             } else {
-                Log.d(
-                    TAG,
-                    "📍 lat=${location.latitude}, lon=${location.longitude}"
-                )
+                Log.d(TAG, "📍 lat=${location.latitude}, lon=${location.longitude}")
 
-                val cityName = getCityName(
-                    context,
-                    location.latitude,
-                    location.longitude
-                )
+                val cityName = getCityName(context, location.latitude, location.longitude)
 
                 fetchWeather(
                     lat = location.latitude,
@@ -118,7 +116,6 @@ object WeatherService {
 
             val forecast = parseApiResponse(JSONObject(response), cityName)
 
-            // Salva no cache (resposta bruta + cidade do Geocoder)
             val prefs = context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE)
             prefs.edit().apply {
                 putString("api_response", response)
@@ -141,16 +138,12 @@ object WeatherService {
         val weatherCode = currentJson.getInt("weather_code")
         val humidity = currentJson.getInt("relative_humidity_2m")
         val windSpeed = currentJson.getDouble("wind_speed_10m").toFloat()
-
-        // Usa horário local para dia/noite
-        val localHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val isDaytime = localHour in 6..17
+        // Usa campo is_day retornado diretamente pela API (1 = dia, 0 = noite)
+        val isDaytime = currentJson.optInt("is_day", 1) == 1
 
         val dailyJson = json.getJSONObject("daily")
-        val tempMax = dailyJson.getJSONArray("temperature_2m_max")
-            .getDouble(0).toFloat()
-        val tempMin = dailyJson.getJSONArray("temperature_2m_min")
-            .getDouble(0).toFloat()
+        val tempMax = dailyJson.getJSONArray("temperature_2m_max").getDouble(0).toFloat()
+        val tempMin = dailyJson.getJSONArray("temperature_2m_min").getDouble(0).toFloat()
 
         val current = WeatherData(
             weatherCode = weatherCode,
@@ -163,7 +156,6 @@ object WeatherService {
             cityName = cityName
         )
 
-        // Parsear previsão diária
         val times = dailyJson.getJSONArray("time")
         val weatherCodes = dailyJson.getJSONArray("weather_code")
         val tempMaxArray = dailyJson.getJSONArray("temperature_2m_max")
@@ -178,9 +170,7 @@ object WeatherService {
             val dateStr = times.getString(i)
             val parsedDate = dateParser.parse(dateStr)
             val weekday = if (parsedDate != null) {
-                weekdayFormat.format(parsedDate).replaceFirstChar {
-                    it.titlecase(brLocale)
-                }
+                weekdayFormat.format(parsedDate).replaceFirstChar { it.titlecase(brLocale) }
             } else {
                 dateStr
             }
@@ -196,70 +186,77 @@ object WeatherService {
             )
         }
 
-        return WeatherForecast(
-            current = current,
-            daily = dailyList
-        ).also {
+        return WeatherForecast(current = current, daily = dailyList).also {
             Log.d(TAG, "✅ Forecast criado - cidade: ${current.cityName ?: "null"}")
         }
     }
 
-    private fun getLastKnownLocation(context: Context): Location? {
+    @SuppressLint("MissingPermission")
+    private suspend fun getCurrentLocation(context: Context): android.location.Location? {
         return try {
-            val locationManager =
-                context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+            val cts = CancellationTokenSource()
 
-            val providers = listOf(
-                LocationManager.NETWORK_PROVIDER,
-                LocationManager.GPS_PROVIDER
-            )
+            val fresh = suspendCancellableCoroutine { cont ->
+                cont.invokeOnCancellation { cts.cancel() }
 
-            for (provider in providers) {
-                try {
-                    val location =
-                        locationManager.getLastKnownLocation(provider)
-
-                    if (location != null) {
-                        return location
+                fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)
+                    .addOnSuccessListener { location ->
+                        cont.resume(location)
                     }
-                } catch (_: SecurityException) {
-                }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "❌ FusedLocation falhou: ${e.message}")
+                        cont.resume(null)
+                    }
             }
 
-            null
+            if (fresh != null) return fresh
+
+            // Fallback: última localização conhecida em cache
+            Log.w(TAG, "⚠️ getCurrentLocation retornou null, tentando lastLocation")
+            suspendCancellableCoroutine { cont ->
+                fusedClient.lastLocation
+                    .addOnSuccessListener { location ->
+                        if (location == null) Log.w(TAG, "⚠️ lastLocation também null")
+                        cont.resume(location)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "❌ lastLocation falhou: ${e.message}")
+                        cont.resume(null)
+                    }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro localização: ${e.message}")
             null
         }
     }
 
-    private fun getCityName(
-        context: Context,
-        lat: Double,
-        lon: Double
-    ): String? {
+    private suspend fun getCityName(context: Context, lat: Double, lon: Double): String? {
         return try {
             Log.d(TAG, "🌐 Buscando cidade para lat=$lat, lon=$lon")
             val geocoder = Geocoder(context, Locale("pt", "BR"))
 
-            @Suppress("DEPRECATION")
-            val addresses = geocoder.getFromLocation(lat, lon, 1)
+            val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                suspendCancellableCoroutine { cont ->
+                    geocoder.getFromLocation(lat, lon, 1, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(results: MutableList<Address>) {
+                            cont.resume(results)
+                        }
+                        override fun onError(errorMessage: String?) {
+                            Log.e(TAG, "❌ Geocoder.onError: $errorMessage")
+                            cont.resume(emptyList())
+                        }
+                    })
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                geocoder.getFromLocation(lat, lon, 1)
+            }
 
             if (!addresses.isNullOrEmpty()) {
                 val addr = addresses[0]
-                val locality = addr.locality
-                val subAdminArea = addr.subAdminArea
-                val adminArea = addr.adminArea
-                val fullAddress = addr.getAddressLine(0)
-
-                Log.d(TAG, "📋 Endereço completo: $fullAddress")
-                Log.d(TAG, "🏙️ Locality: $locality")
-                Log.d(TAG, "📍 SubAdminArea: $subAdminArea")
-                Log.d(TAG, "📮 AdminArea: $adminArea")
-
-                val cityName = locality ?: subAdminArea ?: adminArea
+                val cityName = addr.locality ?: addr.subAdminArea ?: addr.adminArea
                 Log.d(TAG, "✅ Cidade definida: $cityName")
-
                 cityName
             } else {
                 Log.w(TAG, "⚠️ Geocoder não retornou endereços")
@@ -272,22 +269,16 @@ object WeatherService {
     }
 
     private fun getDefaultForecast(): WeatherForecast {
-        val localHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-
         val current = WeatherData(
             weatherCode = 0,
             temperature = 20f,
             temperatureMin = 15f,
             temperatureMax = 25f,
-            isDaytime = localHour in 6..17,
+            isDaytime = true,
             humidity = 60,
             windSpeed = 10f,
             cityName = null
         )
-
-        return WeatherForecast(
-            current = current,
-            daily = emptyList()
-        )
+        return WeatherForecast(current = current, daily = emptyList())
     }
 }

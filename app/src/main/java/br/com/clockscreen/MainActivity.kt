@@ -9,14 +9,17 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import br.com.clockscreen.databinding.ActivityMainBinding
 import br.com.clockscreen.databinding.ItemForecastBinding
-import kotlin.concurrent.thread
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val viewModel: WeatherViewModel by viewModels()
 
     private val requestAlarmPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -34,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         val granted = permissions.entries.any { it.value }
         if (granted) {
-            loadWeatherData()
+            viewModel.load()
         } else {
             Toast.makeText(this, getString(R.string.location_permission_denied), Toast.LENGTH_LONG).show()
         }
@@ -45,14 +48,24 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Solicita permissão de localização se necessário
         requestLocationPermission()
-
-        // Carrega dados do clima
-        loadWeatherData()
-
-        // Agenda atualização da data à meia-noite (fuso local)
         scheduleMidnightUpdateWithPermissionCheck()
+
+        lifecycleScope.launch {
+            viewModel.forecast.collect { forecast ->
+                if (forecast != null) displayWeatherForecast(forecast)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.error.collect {
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.weather_load_error),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
         binding.btnScreenSaver.setOnClickListener {
             startActivity(Intent(this, ScreenSaverActivity::class.java))
@@ -60,7 +73,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestLocationPermission() {
-        // minSdk 24 >= API 23 (M), checkSelfPermission é sempre disponível
         if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -73,46 +85,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadWeatherData() {
-        thread(start = true) {
-            val forecast = WeatherService.getForecast(this)
-            runOnUiThread {
-                if (forecast != null) {
-                    displayWeatherForecast(forecast)
-                } else {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.weather_load_error),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
-
     private fun displayWeatherForecast(forecast: WeatherForecast) {
         val current = forecast.current
 
-        // Cidade
         binding.tvCity.text = current.cityName ?: getString(R.string.location_unavailable)
-
-        // Ícone e descrição
         binding.tvWeatherIcon.text = WeatherBackgroundMapper.getWeatherEmoji(current.weatherCode, current.isDaytime)
         binding.tvWeatherDesc.text = WeatherBackgroundMapper.getWeatherDescription(current.weatherCode)
-
-        // Temperatura
         binding.tvTemperature.text = "${current.temperature.toInt()}°C"
-
-        // Umidade
         binding.tvHumidity.text = "${current.humidity}%"
-
-        // Vento
         binding.tvWind.text = "${current.windSpeed.toInt()} km/h"
-
-        // Min/Max
         binding.tvTempRange.text = "${current.temperatureMin.toInt()}° / ${current.temperatureMax.toInt()}°"
 
-        // Previsão 7 dias
         binding.forecastContainer.removeAllViews()
         for (daily in forecast.daily) {
             val itemBinding = ItemForecastBinding.inflate(
@@ -120,12 +103,10 @@ class MainActivity : AppCompatActivity() {
                 binding.forecastContainer,
                 false
             )
-
             itemBinding.tvForecastDay.text = daily.weekday
             itemBinding.tvForecastIcon.text = WeatherBackgroundMapper.getWeatherEmoji(daily.weatherCode)
             itemBinding.tvForecastDesc.text = WeatherBackgroundMapper.getWeatherDescription(daily.weatherCode)
             itemBinding.tvForecastTemp.text = "${daily.tempMin.toInt()}° / ${daily.tempMax.toInt()}°"
-
             binding.forecastContainer.addView(itemBinding.root)
         }
     }
@@ -145,7 +126,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Recarrega dados do clima ao voltar para a activity
-        loadWeatherData()
+        viewModel.load()
     }
 }
