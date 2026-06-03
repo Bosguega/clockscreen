@@ -8,40 +8,48 @@ import java.util.Calendar
 
 object DateAlarmScheduler {
 
-    fun scheduleMidnightUpdate(context: Context) {
+    private const val REQUEST_CODE = 100
+    private const val UPDATE_INTERVAL_MS = 30 * 60 * 1000L // 30 minutos
+
+    /**
+     * Agenda alarme periódico para atualizar o widget a cada 30 minutos.
+     * Isso garante que temperatura, background e data sejam atualizados
+     * regularmente sem depender apenas do updatePeriodMillis do widget.
+     */
+    fun schedulePeriodicUpdate(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         val intent = Intent(context, DateAlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
-            context, 100, intent,
+            context, REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Agenda para a próxima meia-noite (fuso horário local)
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            // Se já passou da meia-noite de hoje, agenda para amanhã
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
+        // Primeira execução: daqui a 30 segundos (para não atrasar a primeira atualização)
+        val firstTrigger = System.currentTimeMillis() + 30_000L
 
-        // Usa setExactAndAllowWhileIdle para precisão mesmo em Doze mode
-        alarmManager.setExactAndAllowWhileIdle(
+        // Usa setInexactRepeating para economia de bateria
+        // O Android agrupa alarmes similares, então não precisa ser exact
+        alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
+            firstTrigger,
+            UPDATE_INTERVAL_MS,
             pendingIntent
         )
+    }
+
+    /**
+     * Mantido para compatibilidade - agora apenas delega para schedulePeriodicUpdate
+     */
+    fun scheduleMidnightUpdate(context: Context) {
+        schedulePeriodicUpdate(context)
     }
 
     fun cancel(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, DateAlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
-            context, 100, intent,
+            context, REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
