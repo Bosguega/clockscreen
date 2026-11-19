@@ -2,4 +2,7 @@
 <resources>
     <string name="app_name">ClockScreen</string>
     <string name="start_screen_saver">Modo Relógio</string>
+    <string name="widget_glass_label">ClockScreen — Glass</string>
+    <string name="widget_panel_label">ClockScreen — Digital Panel</string>
+    <string name="widget_panel_brand">CLOCKSCREEN</string>
 </resources>
