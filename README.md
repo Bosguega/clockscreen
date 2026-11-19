@@ -15,7 +15,7 @@ Aplicativo Android nativo de relógio digital, com protetor de tela em tela chei
 
 - JDK 17.
 - Android SDK Platform 36.
-- Gradle Wrapper 8.13 (incluído no repositório).
+- Gradle Wrapper 8.14.4 (incluído no repositório).
 - Android Gradle Plugin 8.13.2.
 - Kotlin 2.4.21.
 
@@ -24,7 +24,13 @@ Aplicativo Android nativo de relógio digital, com protetor de tela em tela chei
 No Windows:
 
 ```powershell
-.gradlew.bat testDebugUnitTest assembleDebug
+.\gradlew.bat testDebugUnitTest assembleDebug
+```
+
+Para executar a verificação de código (Lint):
+
+```powershell
+.\gradlew.bat lint
 ```
 
 No Linux ou macOS:
@@ -33,17 +39,26 @@ No Linux ou macOS:
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-O APK de depuração é gerado em `app/build/outputs/apk/debug/`.
+Para executar a verificação de código (Lint):
+
+```bash
+./gradlew lint
+```
+
+O APK de depuração é gerado em `app/build/outputs/apk/debug/`.  
+Os relatórios de testes e Lint são gerados em `app/build/reports/`.
 
 ## Compatibilidade
 
-- Android mínimo: API 24 (Android 7.0).
-- Target SDK: API 34.
+- Android mínimo: API 24 (Android 7.0 - Nougat).
+- Target SDK: API 34 (Android 14).
+- Compile SDK: API 36.
 - Java: 17.
 
 ## Estrutura
 
-- `app/src/main/java/br/com/clockscreen/`: código Kotlin.
+- `app/src/main/java/br/com/clockscreen/`: código Kotlin (telas, widget e desenho dos segmentos).
 - `app/src/main/res/layout/`: layouts XML.
-- `app/src/main/res/drawable/`: recursos visuais.
+- `app/src/main/res/drawable/`: recursos visuais e vetores.
+- `app/src/main/res/values/`: temas, cores e textos.
 - `app/src/test/`: testes unitários.
