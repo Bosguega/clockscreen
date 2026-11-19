@@ -25,11 +25,12 @@
             android:textColor="#FF9EACBA"
             android:textSize="10sp" />
 
-        <View
+        <TextView
             android:layout_width="6dp"
             android:layout_height="6dp"
             android:layout_marginStart="8dp"
-            android:background="@drawable/widget_panel_indicator" />
+            android:background="@drawable/widget_panel_indicator"
+            android:text="" />
     </LinearLayout>
 
     <TextClock
@@ -46,12 +47,13 @@
         android:textSize="84sp"
         android:textStyle="bold" />
 
-    <View
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="10dp"
         android:layout_marginBottom="10dp"
-        android:background="#334C6070" />
+        android:background="#334C6070"
+        android:text="" />
 
     <TextView
         android:id="@+id/tv_widget_weekday"
