@@ -46,10 +46,21 @@ class ClockWidgetProvider : AppWidgetProvider() {
         val weekday = WidgetDateFormatter.weekday()
         val date = WidgetDateFormatter.date()
 
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
         appWidgetIds.forEach { appWidgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_clock).apply {
                 setTextViewText(R.id.tv_widget_weekday, weekday)
                 setTextViewText(R.id.tv_widget_date, date)
+                setOnClickPendingIntent(R.id.widget_background_container, pendingIntent)
             }
             AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views)
         }

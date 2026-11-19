@@ -15,27 +15,44 @@
         android:fontFamily="sans-serif-light"
         android:format24Hour="HH:mm"
         android:format12Hour="hh:mm a"
+        android:includeFontPadding="false"
         android:textColor="@color/text_primary"
-        android:textSize="88sp" />
+        android:textSize="74sp" />
 
-    <TextView
-        android:id="@+id/tv_widget_weekday"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
         android:gravity="center"
-        android:textColor="@color/text_secondary"
-        android:textSize="24sp" />
+        android:background="@drawable/widget_date_chip"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
 
-    <TextView
-        android:id="@+id/tv_widget_date"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:fontFamily="sans-serif"
-        android:gravity="center"
-        android:textColor="@color/text_subtle"
-        android:textSize="22sp" />
+        <TextView
+            android:id="@+id/tv_widget_weekday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:letterSpacing="0.06"
+            android:textAllCaps="true"
+            android:textColor="#F5FFFFFF"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_widget_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:textColor="#B3FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
 
 </LinearLayout>
