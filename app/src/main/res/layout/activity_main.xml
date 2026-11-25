@@ -29,6 +29,14 @@
         android:fontFamily="sans-serif" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_display_style"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/display_style_button"
+        android:textSize="14sp" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_screen_saver"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
