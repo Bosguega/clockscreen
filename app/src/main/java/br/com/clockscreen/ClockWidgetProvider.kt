@@ -2,11 +2,14 @@ package br.com.clockscreen
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 
-class ClockWidgetProvider : AppWidgetProvider() {
+open class ClockWidgetProvider : AppWidgetProvider() {
+
+    protected open val widgetLayoutResId: Int = R.layout.widget_clock
 
     override fun onUpdate(
         context: Context,
@@ -36,7 +39,7 @@ class ClockWidgetProvider : AppWidgetProvider() {
 
     private fun updateAllWidgets(context: Context) {
         val manager = AppWidgetManager.getInstance(context)
-        val component = android.content.ComponentName(context, ClockWidgetProvider::class.java)
+        val component = ComponentName(context, this::class.java)
         updateDate(context, manager.getAppWidgetIds(component))
     }
 
@@ -57,7 +60,7 @@ class ClockWidgetProvider : AppWidgetProvider() {
         )
 
         appWidgetIds.forEach { appWidgetId ->
-            val views = RemoteViews(context.packageName, R.layout.widget_clock).apply {
+            val views = RemoteViews(context.packageName, widgetLayoutResId).apply {
                 setTextViewText(R.id.tv_widget_weekday, weekday)
                 setTextViewText(R.id.tv_widget_date, date)
                 setOnClickPendingIntent(R.id.widget_background_container, pendingIntent)
