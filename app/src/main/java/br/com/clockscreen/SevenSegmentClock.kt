@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -19,6 +20,17 @@ class SevenSegmentClock @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    enum class DisplayStyle { CLASSIC, MODERN }
+
+    private var displayStyle = DisplayStyle.CLASSIC
+
+    fun setDisplayStyle(style: DisplayStyle) {
+        if (displayStyle != style) {
+            displayStyle = style
+            invalidate()
+        }
+    }
 
     private val segmentMap = mapOf(
         '0' to listOf('a', 'b', 'c', 'd', 'e', 'f'),
@@ -171,7 +183,7 @@ class SevenSegmentClock @JvmOverloads constructor(
         val digitSize = minOf(digitWidth, digitHeight)
 
         val totalWidth = digitSize * 4 + digitSize * 0.3f * 3 + digitSize * 0.4f
-        val startX = (width - totalWidth) / 2f + digitSize / 2f
+        val startX = (width - totalWidth) / 2f
         val startY = (height - digitSize) / 2f
 
         var xPos = startX
@@ -211,12 +223,32 @@ class SevenSegmentClock @JvmOverloads constructor(
         for (seg in allSegments) {
             val (left, top, right, bottom) = segmentRects[seg]!!
             if (seg in activeSegments) {
-                canvas.drawRect(left - gap, top - gap, right + gap, bottom + gap, paintGlow)
-                canvas.drawRect(left, top, right, bottom, paintLit)
+                drawSegment(canvas, left - gap, top - gap, right + gap, bottom + gap, paintGlow)
+                drawSegment(canvas, left, top, right, bottom, paintLit)
             } else {
-                canvas.drawRect(left, top, right, bottom, paintDim)
+                drawSegment(canvas, left, top, right, bottom, paintDim)
             }
         }
+    }
+
+    // Classic usa segmentos retos; Modern usa extremidades chanfradas.
+    private fun drawSegment(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, paint: Paint) {
+        if (displayStyle == DisplayStyle.CLASSIC) {
+            canvas.drawRect(left, top, right, bottom, paint)
+            return
+        }
+
+        val cut = minOf(right - left, bottom - top) * 0.42f
+        val path = Path().apply {
+            moveTo(left + cut, top)
+            lineTo(right - cut, top)
+            lineTo(right, (top + bottom) / 2f)
+            lineTo(right - cut, bottom)
+            lineTo(left + cut, bottom)
+            lineTo(left, (top + bottom) / 2f)
+            close()
+        }
+        canvas.drawPath(path, paint)
     }
 
     private fun drawColon(canvas: Canvas, x: Float, y: Float, size: Float, visible: Boolean) {
@@ -224,11 +256,15 @@ class SevenSegmentClock @JvmOverloads constructor(
         val spacing = size * 0.25f
         val colonX = x + size * 0.1f
         val centerY = y + size / 2f
-
         val paint = if (visible) paintLit else paintDim
 
-        canvas.drawRect(colonX, centerY - spacing - dotSize / 2, colonX + dotSize, centerY - spacing + dotSize / 2, paint)
-        canvas.drawRect(colonX, centerY + spacing - dotSize / 2, colonX + dotSize, centerY + spacing + dotSize / 2, paint)
+        if (displayStyle == DisplayStyle.CLASSIC) {
+            canvas.drawRect(colonX, centerY - spacing - dotSize / 2, colonX + dotSize, centerY - spacing + dotSize / 2, paint)
+            canvas.drawRect(colonX, centerY + spacing - dotSize / 2, colonX + dotSize, centerY + spacing + dotSize / 2, paint)
+        } else {
+            canvas.drawCircle(colonX + dotSize / 2f, centerY - spacing, dotSize / 2f, paint)
+            canvas.drawCircle(colonX + dotSize / 2f, centerY + spacing, dotSize / 2f, paint)
+        }
     }
 
     override fun onDetachedFromWindow() {
