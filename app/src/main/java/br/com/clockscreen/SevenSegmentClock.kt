@@ -24,6 +24,30 @@ class SevenSegmentClock @JvmOverloads constructor(
     enum class DisplayStyle { CLASSIC, MODERN }
 
     private var displayStyle = DisplayStyle.CLASSIC
+    private var use24HourFormat = true
+
+    fun set24HourFormat(enabled: Boolean) {
+        if (use24HourFormat != enabled) {
+            use24HourFormat = enabled
+            invalidate()
+        }
+    }
+
+    private val indicatorTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#660A00")
+        textAlign = Paint.Align.LEFT
+        typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+    }
+
+    private val indicatorActivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFFF1A")
+        style = Paint.Style.FILL
+    }
+
+    private val indicatorInactivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#260A00")
+        style = Paint.Style.FILL
+    }
 
     fun setDisplayStyle(style: DisplayStyle) {
         if (displayStyle != style) {
@@ -172,29 +196,36 @@ class SevenSegmentClock @JvmOverloads constructor(
         super.onDraw(canvas)
 
         val calendar = Calendar.getInstance()
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val hour24 = calendar.get(Calendar.HOUR_OF_DAY)
         val minute = calendar.get(Calendar.MINUTE)
         val second = calendar.get(Calendar.SECOND)
+        val isAm = hour24 < 12
+        val displayHour = if (use24HourFormat) hour24 else {
+            val hour12 = hour24 % 12
+            if (hour12 == 0) 12 else hour12
+        }
+        val timeStr = String.format("%02d:%02d", displayHour, minute)
 
-        val timeStr = String.format("%02d:%02d", hour, minute)
-
-        val digitWidth = width / 7f
+        val digitWidth = width / if (use24HourFormat) 7f else 7.4f
         val digitHeight = height * 0.85f
         val digitSize = minOf(digitWidth, digitHeight)
 
-        val totalWidth = digitSize * 4 + digitSize * 0.3f * 3 + digitSize * 0.4f
-        val startX = (width - totalWidth) / 2f
+        // Largura visual real: quatro dígitos, três intervalos e o espaço dos dois-pontos.
+        val clockWidth = digitSize * 5.3f
+        val indicatorWidth = if (use24HourFormat) 0f else digitSize * 0.82f
+        val indicatorGap = if (use24HourFormat) 0f else digitSize * 0.18f
+        val groupWidth = clockWidth + indicatorGap + indicatorWidth
+        val startX = (width - groupWidth) / 2f
         val startY = (height - digitSize) / 2f
 
         var xPos = startX
         var offsetIndex = 0
-        for (i in timeStr.indices) {
-            val ch = timeStr[i]
+        for (ch in timeStr) {
             if (ch == ':') {
                 drawColon(canvas, xPos, startY, digitSize, second % 2 == 0)
                 xPos += digitSize * 0.4f
             } else {
-                val (dx, dy) = currentOffsets.getOrNull(offsetIndex) ?: 0f to 0f
+                val (dx, dy) = currentOffsets.getOrNull(offsetIndex) ?: (0f to 0f)
                 canvas.save()
                 canvas.translate(dx, dy)
                 drawDigit(canvas, ch, xPos, startY, digitSize)
@@ -203,6 +234,28 @@ class SevenSegmentClock @JvmOverloads constructor(
                 offsetIndex++
             }
         }
+
+        if (!use24HourFormat) {
+            drawAmPmIndicators(canvas, startX + clockWidth + indicatorGap, startY, digitSize, isAm)
+        }
+    }
+
+    private fun drawAmPmIndicators(canvas: Canvas, x: Float, y: Float, size: Float, isAm: Boolean) {
+        val textSize = size * 0.19f
+        indicatorTextPaint.textSize = textSize
+        val dotRadius = size * 0.045f
+        val dotX = x + size * 0.04f
+        val textX = dotX + dotRadius * 2.8f
+        val amY = y + size * 0.39f
+        val pmY = y + size * 0.66f
+
+        canvas.drawText("AM", textX, amY + textSize * 0.32f, indicatorTextPaint)
+        canvas.drawCircle(dotX + dotRadius, amY, dotRadius,
+            if (isAm) indicatorActivePaint else indicatorInactivePaint)
+
+        canvas.drawText("PM", textX, pmY + textSize * 0.32f, indicatorTextPaint)
+        canvas.drawCircle(dotX + dotRadius, pmY, dotRadius,
+            if (isAm) indicatorInactivePaint else indicatorActivePaint)
     }
 
     private fun drawDigit(canvas: Canvas, digit: Char, x: Float, y: Float, size: Float) {
