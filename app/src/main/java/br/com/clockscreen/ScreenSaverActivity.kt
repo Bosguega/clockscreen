@@ -16,6 +16,18 @@ class ScreenSaverActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_screen_saver)
 
+        val selectedStyle = getSharedPreferences("clock_settings", MODE_PRIVATE)
+            .getString("display_style", "classic")
+        findViewById<SevenSegmentClock>(R.id.sevenSegmentClock).setDisplayStyle(
+            if (selectedStyle == "modern") SevenSegmentClock.DisplayStyle.MODERN
+            else SevenSegmentClock.DisplayStyle.CLASSIC
+        )
+
+        val use24HourFormat = getSharedPreferences("clock_settings", MODE_PRIVATE)
+            .getBoolean("use_24_hour_format", true)
+        findViewById<SevenSegmentClock>(R.id.sevenSegmentClock)
+            .set24HourFormat(use24HourFormat)
+
         // Mantém a tela ligada
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 

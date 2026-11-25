@@ -2,4 +2,12 @@
 <resources>
     <string name="app_name">ClockScreen</string>
     <string name="start_screen_saver">Modo Relógio</string>
+    <string name="display_style_button">Estilo do visor</string>
+    <string name="display_style_title">Escolha o estilo do relógio</string>
+    <string name="display_style_classic">Clássico (rádio-relógio)</string>
+    <string name="display_style_modern">Moderno (digital)</string>
+    <string name="time_format_button">Formato de hora</string>
+    <string name="time_format_title">Escolha o formato de hora</string>
+    <string name="time_format_24_hour">24 horas (14:35)</string>
+    <string name="time_format_12_hour">12 horas (02:35 AM/PM)</string>
 </resources>
