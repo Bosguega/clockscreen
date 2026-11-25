@@ -40,5 +40,26 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
+
+        binding.btnTimeFormat.setOnClickListener {
+            val preferences = getSharedPreferences("clock_settings", MODE_PRIVATE)
+            val use24HourFormat = preferences.getBoolean("use_24_hour_format", true)
+            val selectedIndex = if (use24HourFormat) 0 else 1
+            val formats = arrayOf(
+                getString(R.string.time_format_24_hour),
+                getString(R.string.time_format_12_hour)
+            )
+
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.time_format_title)
+                .setSingleChoiceItems(formats, selectedIndex) { dialog, which ->
+                    preferences.edit()
+                        .putBoolean("use_24_hour_format", which == 0)
+                        .apply()
+                    dialog.dismiss()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
     }
 }
