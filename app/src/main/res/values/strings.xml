@@ -4,6 +4,6 @@
     <string name="start_screen_saver">Modo Relógio</string>
     <string name="display_style_button">Estilo do visor</string>
     <string name="display_style_title">Escolha o estilo do relógio</string>
-    <string name="display_style_classic">DSEG7 Classic</string>
-    <string name="display_style_modern">DSEG7 Modern</string>
+    <string name="display_style_classic">Clássico (rádio-relógio)</string>
+    <string name="display_style_modern">Moderno (digital)</string>
 </resources>
