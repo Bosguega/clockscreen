@@ -31,7 +31,7 @@
         <receiver
             android:name=".ClockWidgetProvider"
             android:exported="false"
-            android:label="ClockScreen Widget">
+            android:label="@string/widget_glass_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
@@ -40,6 +40,20 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".DigitalPanelWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_panel_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_panel" />
         </receiver>
 
     </application>
