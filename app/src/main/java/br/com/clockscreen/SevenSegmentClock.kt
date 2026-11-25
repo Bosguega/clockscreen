@@ -40,7 +40,7 @@ class SevenSegmentClock @JvmOverloads constructor(
     }
 
     private val indicatorActivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFFF1A")
+        color = Color.parseColor("#FFFF1A1A")
         style = Paint.Style.FILL
     }
 
