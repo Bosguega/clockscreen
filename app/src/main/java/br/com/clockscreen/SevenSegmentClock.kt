@@ -206,7 +206,7 @@ class SevenSegmentClock @JvmOverloads constructor(
         }
         val timeStr = String.format("%02d:%02d", displayHour, minute)
 
-        val digitWidth = width / if (use24HourFormat) 7f else 7.4f
+        val digitWidth = width / 7f
         val digitHeight = height * 0.85f
         val digitSize = minOf(digitWidth, digitHeight)
 
